@@ -1,18 +1,13 @@
-import os
-from dotenv import load_dotenv
 from langchain_community.vectorstores import Chroma
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 
 
 def main():
-    load_dotenv()
-
     CHROMA_DIR = "data/vectorstore"
     COLLECTION_NAME = "company_handbooks"
 
-    embeddings = GoogleGenerativeAIEmbeddings(
-        model="models/text-embedding-004",
-        google_api_key=os.getenv("GEMINI_API_KEY")
+    embeddings = HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2"
     )
 
     vectordb = Chroma(
@@ -45,7 +40,7 @@ def main():
             print(f"\n--- Result {i} ---")
             print(f"📘 Handbook: {handbook}")
             print(f"📄 Page: {page} | Chunk: {chunk_id}")
-            print(doc.page_content[:600])  # preview
+            print(doc.page_content[:600])
 
 
 if __name__ == "__main__":

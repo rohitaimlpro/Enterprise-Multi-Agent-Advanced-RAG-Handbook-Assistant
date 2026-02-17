@@ -4,8 +4,7 @@ from ingestion.load_docs import load_handbook_pdfs
 from ingestion.chunk_docs import chunk_documents
 
 from langchain_community.vectorstores import Chroma
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-
+from langchain_community.embeddings import HuggingFaceEmbeddings
 
 def main():
     load_dotenv()
@@ -26,10 +25,9 @@ def main():
 
     print("🧠 Creating embeddings + storing in Chroma...")
 
-    embeddings = GoogleGenerativeAIEmbeddings(
-        model="models/text-embedding-004",
-        google_api_key=os.getenv("GEMINI_API_KEY")
-    )
+    embeddings = HuggingFaceEmbeddings(
+    model_name="sentence-transformers/all-MiniLM-L6-v2"
+)
 
     vectordb = Chroma.from_documents(
         documents=chunked_docs,
