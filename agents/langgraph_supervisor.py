@@ -1,6 +1,7 @@
 import sqlite3
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.sqlite import SqliteSaver
+
 from agents.state import RAGState
 from agents.nodes import (
     node_query_understanding,
@@ -16,24 +17,36 @@ from agents.nodes import (
 )
 
 
+def route_after_compress(state: RAGState) -> str:
+    """
+    Route after compression:
+    - If user wants an action deliverable (email/checklist/summary), go directly to action
+      (skip answer + verify to reduce Gemini calls).
+    - Otherwise go to answer.
+    """
+    if state.get("needs_action", False):
+        return "action"
+    return "answer"
+
+
 def route_after_verify(state: RAGState) -> str:
     """
     Decide next step after verification.
     """
-
     verification = state.get("verification", {})
     confidence = verification.get("confidence", 0)
 
     retry_count = state.get("retry_count", 0)
-    max_retries = state.get("max_retries", 1)
+    max_retries = state.get("max_retries", 0)  # ✅ default 0 to avoid extra LLM calls
+
+    # Human-in-loop trigger
+    if confidence < 40:
+        state["human_approval_required"] = True
+        return "end"
 
     # Retry if weak confidence
     if confidence < 60 and retry_count < max_retries:
         return "retry"
-
-    # If user asked for an action deliverable (email/checklist/summary)
-    if state.get("needs_action", False):
-        return "action"
 
     return "end"
 
@@ -65,30 +78,38 @@ def build_graph():
     graph.add_edge("retrieve", "multihop")
     graph.add_edge("multihop", "rerank")
     graph.add_edge("rerank", "compress")
-    graph.add_edge("compress", "answer")
+
+    # ✅ NEW: Conditional routing after compress
+    graph.add_conditional_edges(
+        "compress",
+        route_after_compress,
+        {
+            "action": "action",
+            "answer": "answer"
+        }
+    )
+
+    # Answer flow
     graph.add_edge("answer", "verify")
 
-    # -----------------------------
-    # Conditional routing after verify
-    # -----------------------------
+    # Verify routing (retry/end)
     graph.add_conditional_edges(
         "verify",
         route_after_verify,
         {
             "retry": "retry",
-            "action": "action",
             "end": END
         }
     )
 
-    # retry goes back to verify (it re-generates answer inside retry node)
+    # Retry goes back to verify (retry node regenerates answer inside it)
     graph.add_edge("retry", "verify")
 
-    # action ends
+    # Action ends
     graph.add_edge("action", END)
 
     # -----------------------------
-    # SQLite Checkpointing (Fixed)
+    # SQLite Checkpointing
     # -----------------------------
     conn = sqlite3.connect("memory/checkpoints.sqlite", check_same_thread=False)
     checkpointer = SqliteSaver(conn)

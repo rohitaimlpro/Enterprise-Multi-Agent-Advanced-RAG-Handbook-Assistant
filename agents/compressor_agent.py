@@ -1,41 +1,46 @@
-import os
 from typing import List
-from dotenv import load_dotenv
-from langchain_google_genai import ChatGoogleGenerativeAI
+import re
 from langchain_core.documents import Document
+from sentence_transformers import SentenceTransformer, util
 
-load_dotenv()
+_embedder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+
+
+def _split_sentences(text: str) -> List[str]:
+    text = re.sub(r"\s+", " ", text).strip()
+    sentences = re.split(r"(?<=[.!?])\s+", text)
+    return [s.strip() for s in sentences if len(s.strip()) > 25]
 
 
 def compressor_agent(query: str, docs: List[Document]) -> str:
     """
-    Compresses retrieved chunks into the most relevant lines only.
-    Returns a single compressed context string.
+    Compress context locally:
+    - Split docs into sentences
+    - Rank sentences by similarity to query
+    - Keep top sentences
     """
 
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash",
-        google_api_key=os.getenv("GEMINI_API_KEY"),
-        temperature=0.0
-    )
+    if not docs:
+        return ""
 
-    joined = "\n\n".join(
-        [f"[Source {i+1}] {d.page_content}" for i, d in enumerate(docs)]
-    )
+    sentences = []
+    for d in docs[:6]:
+        sents = _split_sentences(d.page_content)
+        for s in sents:
+            sentences.append(s)
 
-    prompt = f"""
-You are a context compression agent.
+    if not sentences:
+        return "\n\n".join([d.page_content[:600] for d in docs[:3]])
 
-User query: {query}
+    q_emb = _embedder.encode(query, convert_to_tensor=True)
+    s_emb = _embedder.encode(sentences, convert_to_tensor=True)
 
-From the sources below, extract ONLY the sentences relevant to answering the query.
-Do not add any new information.
-Keep it concise.
+    scores = util.cos_sim(q_emb, s_emb)[0].cpu().tolist()
 
-Sources:
-{joined}
+    ranked = sorted(zip(sentences, scores), key=lambda x: x[1], reverse=True)
 
-Return the compressed context only.
-"""
+    top_sentences = []
+    for sent, sc in ranked[:18]:
+        top_sentences.append(sent)
 
-    return llm.invoke(prompt).content.strip()
+    return "\n".join(top_sentences)

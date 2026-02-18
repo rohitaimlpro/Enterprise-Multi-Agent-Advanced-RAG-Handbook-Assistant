@@ -18,6 +18,12 @@ class RAGState(TypedDict, total=False):
     # retrieval pipeline
     retrieved_docs: List[Document]
     reranked_docs: List[Document]
+
+    # handbook filtering
+    primary_handbook: str
+    handbook_distribution: Dict[str, int]
+
+    # compression
     compressed_context: str
 
     # answer pipeline
@@ -30,3 +36,6 @@ class RAGState(TypedDict, total=False):
 
     # action
     action_output: Optional[str]
+
+    # streaming logs
+    stream_log: List[str]

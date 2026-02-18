@@ -1,30 +1,45 @@
-import os
-from dotenv import load_dotenv
-from langchain_google_genai import ChatGoogleGenerativeAI
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+import torch
 
-load_dotenv()
+MODEL_NAME = "google/flan-t5-small"
+
+_tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+_model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_NAME)
+
+_model.eval()
 
 
 def query_rewrite_agent(user_query: str, intent: str) -> str:
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash",
-        google_api_key=os.getenv("GEMINI_API_KEY"),
-        temperature=0.2
-    )
-
     prompt = f"""
-You rewrite employee handbook questions into optimized retrieval queries.
+Rewrite this employee handbook query into a short retrieval query.
 
 Rules:
 - keep it short
 - include keywords
 - include synonyms
-- remove unnecessary words
+- remove filler words
+- do NOT answer
 
 Intent: {intent}
-User query: {user_query}
+Query: {user_query}
 
-Return ONLY the rewritten query text.
-"""
+Rewritten query:
+""".strip()
 
-    return llm.invoke(prompt).content.strip()
+    inputs = _tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512)
+
+    with torch.no_grad():
+        output = _model.generate(
+            **inputs,
+            max_new_tokens=40,
+            num_beams=4,
+            do_sample=False
+        )
+
+    rewritten = _tokenizer.decode(output[0], skip_special_tokens=True).strip()
+
+    # fallback safety
+    if len(rewritten) < 3:
+        return user_query
+
+    return rewritten

@@ -1,68 +1,72 @@
-import os
-import json
-from dotenv import load_dotenv
-from langchain_google_genai import ChatGoogleGenerativeAI
+from typing import Dict, Any
+from sentence_transformers import SentenceTransformer, util
 
-load_dotenv()
+# Local CPU model
+_embedder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+
+INTENTS = {
+    "leave_policy": "questions about leave, holidays, sick leave, casual leave, earned leave",
+    "benefits": "questions about employee benefits, insurance, allowances, perks",
+    "payroll": "questions about salary, payroll, payslip, deductions, PF, taxes",
+    "resignation": "questions about resignation process, exit, handover, final settlement",
+    "notice_period": "questions about notice period, serving notice, buyout",
+    "probation": "questions about probation period, confirmation, performance review",
+    "wfh_policy": "questions about work from home, remote work, hybrid policy",
+    "code_of_conduct": "questions about employee behavior, discipline, ethics, harassment",
+    "termination": "questions about termination, dismissal, misconduct, termination rules",
+    "grievance": "questions about grievance process, complaints, reporting issues",
+    "travel_policy": "questions about travel reimbursement, travel policy, expenses, claims",
+    "general_policy": "general handbook questions"
+}
+
+ACTION_HINTS = [
+    "write email", "draft email", "generate email",
+    "create checklist", "make checklist",
+    "summarize", "summary",
+    "draft", "prepare", "template"
+]
 
 
-def query_understanding_agent(user_query: str) -> dict:
-    """
-    Returns a JSON dict:
-    {
-      "intent": "...",
-      "entities": {...},
-      "retrieval_strategy": "single_hop" | "multi_hop",
-      "needs_action": true/false
+def _classify_intent(query: str) -> str:
+    labels = list(INTENTS.keys())
+    label_texts = [INTENTS[k] for k in labels]
+
+    q_emb = _embedder.encode(query, convert_to_tensor=True)
+    l_emb = _embedder.encode(label_texts, convert_to_tensor=True)
+
+    scores = util.cos_sim(q_emb, l_emb)[0].cpu().tolist()
+    best_idx = max(range(len(scores)), key=lambda i: scores[i])
+    return labels[best_idx]
+
+
+def _detect_multihop(query: str) -> str:
+    q = query.lower()
+    multi_hop_triggers = [
+        "and", "also", "along with", "plus",
+        "documents required", "eligibility", "process",
+        "steps", "how to", "approval", "exception"
+    ]
+    if any(t in q for t in multi_hop_triggers):
+        return "multi_hop"
+    return "single_hop"
+
+
+def _needs_action(query: str) -> bool:
+    q = query.lower()
+    return any(h in q for h in ACTION_HINTS)
+
+
+def query_understanding_agent(user_query: str) -> Dict[str, Any]:
+    intent = _classify_intent(user_query)
+    retrieval_strategy = _detect_multihop(user_query)
+    needs_action = _needs_action(user_query)
+
+    # Entities can be added later (NER). Keep simple for now.
+    entities = {}
+
+    return {
+        "intent": intent,
+        "entities": entities,
+        "retrieval_strategy": retrieval_strategy,
+        "needs_action": needs_action
     }
-    """
-
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash",
-        google_api_key=os.getenv("GEMINI_API_KEY"),
-        temperature=0.1
-    )
-
-    prompt = f"""
-You are a company handbook query understanding agent.
-
-Extract intent and entities from the user query.
-Return ONLY valid JSON.
-
-Possible intents:
-- leave_policy
-- benefits
-- payroll
-- resignation
-- notice_period
-- probation
-- wfh_policy
-- code_of_conduct
-- termination
-- grievance
-- travel_policy
-- general_policy
-
-retrieval_strategy:
-- "single_hop" if answer likely in one section
-- "multi_hop" if answer needs multiple sections
-
-needs_action:
-- true if user is asking for drafting something (email/checklist)
-- false otherwise
-
-User query: {user_query}
-"""
-
-    resp = llm.invoke(prompt).content.strip()
-
-    try:
-        return json.loads(resp)
-    except Exception:
-        # fallback safe response
-        return {
-            "intent": "general_policy",
-            "entities": {},
-            "retrieval_strategy": "single_hop",
-            "needs_action": False
-        }
