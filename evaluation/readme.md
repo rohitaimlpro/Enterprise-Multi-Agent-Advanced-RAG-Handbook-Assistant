@@ -1,22 +1,18 @@
-write its readme.md code for github Below is a **complete `README.md`** you can copy-paste into your GitHub repo for this project.
-
----
-
 # 📘 Enterprise Handbook RAG Assistant (LangGraph + Hybrid Retrieval + Verification)
 
 An **Enterprise Employee Handbook Q&A Assistant** that answers employee policy questions (leave, notice period, probation, benefits, termination, WFH etc.) using **Retrieval-Augmented Generation (RAG)**.
 
 This project uses:
 
-* ✅ **Hybrid Retrieval** (Dense + BM25)
-* ✅ **Reranking** (Cross-Encoder)
-* ✅ **Multi-hop retrieval** (optional)
-* ✅ **LangGraph Supervisor** pipeline
-* ✅ **Conversation Memory** (SQLite checkpoints)
-* ✅ **Grounding Verification** (local)
-* ✅ **FastAPI backend**
-* ✅ **Streamlit UI**
-* ✅ Gemini API (LLM generation)
+- ✅ **Hybrid Retrieval** (Dense + BM25)
+- ✅ **Reranking** (Cross-Encoder)
+- ✅ **Multi-hop retrieval** (optional)
+- ✅ **LangGraph Supervisor** pipeline
+- ✅ **Conversation Memory** (SQLite checkpoints)
+- ✅ **Grounding Verification** (local)
+- ✅ **FastAPI backend**
+- ✅ **Streamlit UI**
+- ✅ **Gemini API** (LLM generation)
 
 ---
 
@@ -24,9 +20,9 @@ This project uses:
 
 ### 🔎 Advanced Retrieval Pipeline
 
-* Dense similarity search using **Chroma + SentenceTransformer**
-* Keyword search using **BM25**
-* Merged + deduplicated results
+- Dense similarity search using **Chroma + SentenceTransformer**
+- Keyword search using **BM25**
+- Merged + deduplicated results
 
 ### 📌 Reranking
 
@@ -40,15 +36,15 @@ Uses **Gemini (gemini-2.5-flash)** to generate final answers strictly from retri
 
 A local verifier checks:
 
-* similarity between answer and context
-* missing sources section
-* confidence score (0–100)
+- similarity between answer and context
+- missing sources section
+- confidence score (0–100)
 
 ### 🧾 Citations
 
 Answers contain a **Sources:** section with citations like:
 
-```
+```txt
 [1] Employee-Handbook.pdf (page 17, chunk 0)
 [2] HR-Handbook.pdf (page 46, chunk 0)
 ```
@@ -61,16 +57,16 @@ LangGraph uses SQLite checkpointing to store thread state and allow conversation
 
 A clean Streamlit chat UI with:
 
-* answer output
-* verification confidence
-* sources
-* internal agent logs
+- answer output
+- verification confidence
+- sources
+- internal agent logs
 
 ---
 
 ## 🏗️ Project Architecture
 
-```
+```bash
 enterprise_handbook_rag/
 │
 ├── agents/
@@ -171,7 +167,7 @@ Create `.env` file:
 GEMINI_API_KEY=your_google_gemini_api_key_here
 ```
 
-You can also optionally add HuggingFace token to avoid rate limits:
+You can also optionally add a HuggingFace token to avoid rate limits:
 
 ```env
 HF_TOKEN=your_huggingface_token_here
@@ -181,9 +177,7 @@ HF_TOKEN=your_huggingface_token_here
 
 ## 📥 Ingestion (Build Vector Store)
 
-Place handbook PDFs inside your ingestion folder (or update path in ingestion script).
-
-Then run:
+Place handbook PDFs inside your ingestion folder (or update the path in the ingestion script). Then run:
 
 ```bash
 python -m ingestion.build_vectorstore
@@ -191,7 +185,7 @@ python -m ingestion.build_vectorstore
 
 This creates:
 
-```
+```bash
 data/vectorstore/
 ```
 
@@ -211,7 +205,7 @@ python -m evaluation.test_langgraph
 
 ## 🌐 Run Backend API (FastAPI)
 
-Start API server:
+Start the API server:
 
 ```bash
 uvicorn api.app:app --reload --port 8000
@@ -245,27 +239,27 @@ http://localhost:8501
 
 Try questions like:
 
-* **What is the notice period and what happens if I don’t serve it fully?**
-* **Explain probation period policy**
-* **What is the leave policy for sick leave?**
-* **Is work from home allowed?**
-* **What happens during termination for misconduct?**
-* **Write an email to HR requesting casual leave**
+- **What is the notice period and what happens if I don't serve it fully?**
+- **Explain probation period policy**
+- **What is the leave policy for sick leave?**
+- **Is work from home allowed?**
+- **What happens during termination for misconduct?**
+- **Write an email to HR requesting casual leave**
 
 ---
 
 ## 🛠️ Tech Stack
 
-* **Python 3.10+**
-* **LangGraph**
-* **LangChain**
-* **ChromaDB**
-* **Sentence Transformers**
-* **BM25 (rank-bm25)**
-* **Cross-Encoder Reranker**
-* **FastAPI**
-* **Streamlit**
-* **Gemini API**
+- **Python 3.10+**
+- **LangGraph**
+- **LangChain**
+- **ChromaDB**
+- **Sentence Transformers**
+- **BM25 (rank-bm25)**
+- **Cross-Encoder Reranker**
+- **FastAPI**
+- **Streamlit**
+- **Gemini API**
 
 ---
 
@@ -273,30 +267,30 @@ Try questions like:
 
 ### Gemini Free Tier Quota
 
-Gemini free tier has request limits (429 RESOURCE_EXHAUSTED).
+Gemini free tier has request limits (`429 RESOURCE_EXHAUSTED`).
 
 **Solution options:**
 
-* Wait for quota reset
-* Add billing
-* Add fallback local generation mode (recommended)
-* Switch to a free HuggingFace inference model
+- Wait for quota reset
+- Add billing
+- Add fallback local generation mode (recommended)
+- Switch to a free HuggingFace inference model
 
 ### Multi-Handbook Conflicts
 
 If multiple handbooks contain similar policies, results may mix.
 
-**Fix:** enable handbook filtering strictly by primary handbook.
+**Fix:** Enable handbook filtering strictly by primary handbook.
 
 ---
 
 ## 📌 Future Improvements
 
-* Add local answer fallback when Gemini quota is exceeded
-* Add proper entity extraction (department, grade, role)
-* Add PDF export of answers
-* Add admin UI to upload new handbooks
-* Add authentication + deployment
+- Add local answer fallback when Gemini quota is exceeded
+- Add proper entity extraction (department, grade, role)
+- Add PDF export of answers
+- Add admin UI to upload new handbooks
+- Add authentication + deployment
 
 ---
 
@@ -309,12 +303,3 @@ Built as an end-to-end **Advanced RAG + LangGraph Supervisor** project for enter
 ## ⭐ If You Like This Project
 
 Give it a ⭐ on GitHub and feel free to fork it.
-
----
-
-If you want, I can also generate:
-
-✅ `requirements.txt` clean version
-✅ `.env.example`
-✅ Perfect GitHub project title + tags + description
-✅ Screenshots section for README
